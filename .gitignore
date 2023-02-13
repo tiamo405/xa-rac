@@ -1,0 +1,13 @@
+data/
+checkpoints/
+yolov5/
+__pycache__/
+.pt
+.pth
+
+.jpg
+.png
+.mp4
+.avi
+.csv
+
