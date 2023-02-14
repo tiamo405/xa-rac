@@ -11,4 +11,8 @@ def point_object(res) :
     return person_locations
 def search_id(path) :
     fnames = os.listdir(path)
-    return len(fnames)
+    dem = 0
+    for fname in fnames :
+        if '.jpg' in fname or '.png' in fname :
+            dem+=1
+    return dem+1

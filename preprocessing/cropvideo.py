@@ -31,9 +31,11 @@ def createjson(poses, path_json, width, height):
     myjsonfile.close()
 
 def crop_image_video(path_video, path_save, model_detect_person, model_open_pose) :
-    name_video = path_video.split('/')[-1]
+    name_video = path_video.split('/')[-1].split('.')[0]
     if not os.path.exists(path_save) :
         os.mkdir(path_save)
+    if not os.path.exists(os.path.join(path_save, name_video)) :
+        os.mkdir(os.path.join(path_save, name_video))
     cap = cv2.VideoCapture(path_video)
     mot_tracker = Sort(max_age=10)
     frame_width = int(cap.get(3))
@@ -51,7 +53,7 @@ def crop_image_video(path_video, path_save, model_detect_person, model_open_pose
             ids = trackers[:, 4].flatten()
             for (left, top, right, bottom), id in zip(person_locations, ids):
                 image = frame[top:bottom, left: right]
-                path_save_img_json = os.path.join(path_save, str(id))
+                path_save_img_json = os.path.join(path_save,name_video,  str(id))
                 if not os.path.exists(path_save_img_json) :
                     os.mkdir(path_save_img_json)
                 id_frame = search_id(path_save_img_json)

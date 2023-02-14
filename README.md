@@ -23,3 +23,16 @@ https://github.com/ultralytics/yolov5.git
 ```
 bash dowl_weight.sh
 ```
+checkpoints ---LSTM
+            ---body_25.pth
+            ---body_pose_model.pth
+            ---hand_pose_model
+            ---yolov5n.pt
+4. crop video, create json pose
+```
+python debug.py
+```
+path_video="data/person.mp4", 
+path_save="data/images"
+
+
