@@ -12,7 +12,6 @@ from torch.optim import lr_scheduler
 import torch.optim as optim
 import cv2
 from datasets import DatasetLSTM
-from util.cropvideo import crop_train
 from model import LSTM
 import time
 import copy
@@ -26,7 +25,7 @@ def get_opt():
     
     #
     parser.add_argument('--dataset_dir', type=str, default='dataset')
-    parser.add_argument('--train_dir', type=str, default='XaRac/data/train')
+    parser.add_argument('--train_dir', type=str, default='data/train')
     parser.add_argument('--save_dir', type=str, default='results/')
     
     #checkpoints, train

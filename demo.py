@@ -7,7 +7,7 @@ import torch
 import sys
 sys.path.insert(0, "preprocessing")
 sys.path.insert(0, "sort")
-from preprocessing.utils import point_object
+from preprocessing.util import point_object
 from sort.sort import Sort
 
 mot_tracker = Sort(max_age=10)

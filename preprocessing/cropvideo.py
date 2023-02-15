@@ -2,14 +2,17 @@ import cv2
 import os
 import json
 import numpy as np
-from src import torch_openpose
+
 import sys
-sys.path.insert(1, "sort")
-sys.path.insert(0, "preprocessing/utils")
+from pathlib import Path
+
+root = os.getcwd()
+pwd = os.path.dirname(os.path.realpath("sort"))
+sys.path.insert(0, root)
 from sort.sort import Sort 
 
-from .utils import point_object, search_id
-pwd = os.path.dirname(os.path.realpath(__file__))
+from preprocessing.util import (point_object, search_id, draw)
+
 
 def createjson(poses, path_json, width, height):
     tmp = list(np.array(poses[0]).reshape(75))
@@ -29,17 +32,20 @@ def createjson(poses, path_json, width, height):
     myjsonfile = open(path_json, "w")
     myjsonfile.write(data_string)
     myjsonfile.close()
+    print('create json: done')
 
-def crop_image_video(path_video, path_save, model_detect_person, model_open_pose) :
+def crop_image_video(path_video, path_save, model_detect_person, model_open_pose, tracking) :
     name_video = path_video.split('/')[-1].split('.')[0]
+    print(f'name video : {name_video}')
     if not os.path.exists(path_save) :
         os.mkdir(path_save)
     if not os.path.exists(os.path.join(path_save, name_video)) :
         os.mkdir(os.path.join(path_save, name_video))
     cap = cv2.VideoCapture(path_video)
-    mot_tracker = Sort(max_age=10)
+    mot_tracker = tracking
     frame_width = int(cap.get(3))
     frame_height = int(cap.get(4))
+    ids = None
     while(cap.isOpened()) :
         ret, frame = cap.read()
         if frame is None:
@@ -60,11 +66,14 @@ def crop_image_video(path_video, path_save, model_detect_person, model_open_pose
                 cv2.imwrite(os.path.join(path_save_img_json, str(id_frame) + '.jpg'), image)
                 try:
                     pose = model_open_pose(image)
-                    print(pose)
+                    
+                    cv2.imwrite(os.path.join(path_save_img_json, str(id_frame) + '.jpg'), image)
                     if len(pose) > 0 :
                         createjson(poses= pose, \
                             path_json= os.path.join(path_save_img_json, str(id_frame)+'.json'),
                             width= right - left, height= bottom - top)
+                        image = draw(image, pose)    
+                        cv2.imwrite(os.path.join(path_save_img_json, str(id_frame) + '.jpg'), image)
                 except :
                     continue
         # cv2.imshow("Image", frame)
