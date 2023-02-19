@@ -1,45 +1,24 @@
 import cv2
 import numpy as np
 import math
+import time
 from scipy.ndimage.filters import gaussian_filter
+import matplotlib.pyplot as plt
+import matplotlib
 import torch
+from torchvision import transforms
 
-from src import util
-from src.model import bodypose_model,bodypose_25_model
-model_coco = ""
-model_body25 = 'checkpoints/body_25.pth'
+from src_pose import util
+from src_pose.model import bodypose_model
 
-class torch_openpose(object):
-    def __init__(self, model_type):
-        if model_type == 'body_25':
-            self.model = bodypose_25_model()
-            self.njoint = 26
-            self.npaf = 52
-            self.model.load_state_dict(torch.load(model_body25))
-        else:
-            self.model = bodypose_model()
-            self.njoint = 19
-            self.npaf = 38
-            self.model.load_state_dict(torch.load(model_coco))
+class Body(object):
+    def __init__(self, model_path):
+        self.model = bodypose_model()
         if torch.cuda.is_available():
             self.model = self.model.cuda()
+        model_dict = util.transfer(self.model, torch.load(model_path))
+        self.model.load_state_dict(model_dict)
         self.model.eval()
-        
-        if self.njoint == 19:  #coco
-            self.limbSeq = [[1, 2], [1, 5], [2, 3], [3, 4], [5, 6], [6, 7], [1, 8], [8, 9], \
-                   [9, 10], [1, 11], [11, 12], [12, 13], [1, 0], [0, 14], [14, 16], \
-                   [0, 15], [15, 17]]
-            self.mapIdx = [[12, 13],[20, 21],[14, 15],[16, 17],[22, 23],[24, 25],[0, 1],[2, 3],\
-                           [4, 5],[6, 7],[8, 9],[10, 11],[28, 29],[30, 31],[34, 35],[32, 33],\
-                               [36, 37]]
-        elif self.njoint == 26:  #body_25
-            self.limbSeq = [[1,0],[1,2],[2,3],[3,4],[1,5],[5,6],[6,7],[1,8],[8,9],[9,10],\
-                            [10,11],[8,12],[12,13],[13,14],[0,15],[0,16],[15,17],[16,18],\
-                                [11,24],[11,22],[14,21],[14,19],[22,23],[19,20]]
-            self.mapIdx = [[30, 31],[14, 15],[16, 17],[18, 19],[22, 23],[24, 25],[26, 27],[0, 1],[6, 7],\
-                           [2, 3],[4, 5],  [8, 9],[10, 11],[12, 13],[32, 33],[34, 35],[36,37],[38,39],\
-                               [50,51],[46,47],[44,45],[40,41],[48,49],[42,43]]
-            
 
     def __call__(self, oriImg):
         # scale_search = [0.5, 1.0, 1.5, 2.0]
@@ -50,8 +29,8 @@ class torch_openpose(object):
         thre1 = 0.1
         thre2 = 0.05
         multiplier = [x * boxsize / oriImg.shape[0] for x in scale_search]
-        heatmap_avg = np.zeros((oriImg.shape[0], oriImg.shape[1], self.njoint))
-        paf_avg = np.zeros((oriImg.shape[0], oriImg.shape[1], self.npaf))
+        heatmap_avg = np.zeros((oriImg.shape[0], oriImg.shape[1], 19))
+        paf_avg = np.zeros((oriImg.shape[0], oriImg.shape[1], 38))
 
         for m in range(len(multiplier)):
             scale = multiplier[m]
@@ -65,20 +44,19 @@ class torch_openpose(object):
                 data = data.cuda()
             # data = data.permute([2, 0, 1]).unsqueeze(0).float()
             with torch.no_grad():
-                heatmap, paf = self.model(data)
-            
-            heatmap = heatmap.detach().cpu().numpy()
-            paf = paf.detach().cpu().numpy()
+                Mconv7_stage6_L1, Mconv7_stage6_L2 = self.model(data)
+            Mconv7_stage6_L1 = Mconv7_stage6_L1.cpu().numpy()
+            Mconv7_stage6_L2 = Mconv7_stage6_L2.cpu().numpy()
 
             # extract outputs, resize, and remove padding
             # heatmap = np.transpose(np.squeeze(net.blobs[output_blobs.keys()[1]].data), (1, 2, 0))  # output 1 is heatmaps
-            heatmap = np.transpose(np.squeeze(heatmap), (1, 2, 0))  # output 1 is heatmaps
+            heatmap = np.transpose(np.squeeze(Mconv7_stage6_L2), (1, 2, 0))  # output 1 is heatmaps
             heatmap = cv2.resize(heatmap, (0, 0), fx=stride, fy=stride, interpolation=cv2.INTER_CUBIC)
             heatmap = heatmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
             heatmap = cv2.resize(heatmap, (oriImg.shape[1], oriImg.shape[0]), interpolation=cv2.INTER_CUBIC)
 
             # paf = np.transpose(np.squeeze(net.blobs[output_blobs.keys()[0]].data), (1, 2, 0))  # output 0 is PAFs
-            paf = np.transpose(np.squeeze(paf), (1, 2, 0))  # output 0 is PAFs
+            paf = np.transpose(np.squeeze(Mconv7_stage6_L1), (1, 2, 0))  # output 0 is PAFs
             paf = cv2.resize(paf, (0, 0), fx=stride, fy=stride, interpolation=cv2.INTER_CUBIC)
             paf = paf[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
             paf = cv2.resize(paf, (oriImg.shape[1], oriImg.shape[0]), interpolation=cv2.INTER_CUBIC)
@@ -88,8 +66,8 @@ class torch_openpose(object):
 
         all_peaks = []
         peak_counter = 0
-        
-        for part in range(self.njoint - 1):
+
+        for part in range(18):
             map_ori = heatmap_avg[:, :, part]
             one_heatmap = gaussian_filter(map_ori, sigma=3)
 
@@ -111,20 +89,24 @@ class torch_openpose(object):
 
             all_peaks.append(peaks_with_score_and_id)
             peak_counter += len(peaks)
-        
+
         # find connection in the specified sequence, center 29 is in the position 15
-        limbSeq = self.limbSeq
+        limbSeq = [[2, 3], [2, 6], [3, 4], [4, 5], [6, 7], [7, 8], [2, 9], [9, 10], \
+                   [10, 11], [2, 12], [12, 13], [13, 14], [2, 1], [1, 15], [15, 17], \
+                   [1, 16], [16, 18], [3, 17], [6, 18]]
         # the middle joints heatmap correpondence
-        mapIdx = self.mapIdx
+        mapIdx = [[31, 32], [39, 40], [33, 34], [35, 36], [41, 42], [43, 44], [19, 20], [21, 22], \
+                  [23, 24], [25, 26], [27, 28], [29, 30], [47, 48], [49, 50], [53, 54], [51, 52], \
+                  [55, 56], [37, 38], [45, 46]]
 
         connection_all = []
         special_k = []
         mid_num = 10
 
         for k in range(len(mapIdx)):
-            score_mid = paf_avg[:, :, mapIdx[k]]
-            candA = all_peaks[limbSeq[k][0]]
-            candB = all_peaks[limbSeq[k][1]]
+            score_mid = paf_avg[:, :, [x - 19 for x in mapIdx[k]]]
+            candA = all_peaks[limbSeq[k][0] - 1]
+            candB = all_peaks[limbSeq[k][1] - 1]
             nA = len(candA)
             nB = len(candB)
             indexA, indexB = limbSeq[k]
@@ -134,6 +116,7 @@ class torch_openpose(object):
                     for j in range(nB):
                         vec = np.subtract(candB[j][:2], candA[i][:2])
                         norm = math.sqrt(vec[0] * vec[0] + vec[1] * vec[1])
+                        norm = max(0.001, norm)
                         vec = np.divide(vec, norm)
 
                         startend = list(zip(np.linspace(candA[i][0], candB[j][0], num=mid_num), \
@@ -169,14 +152,14 @@ class torch_openpose(object):
 
         # last number in each row is the total parts number of that person
         # the second last number in each row is the score of the overall configuration
-        subset = -1 * np.ones((0, self.njoint + 1))
+        subset = -1 * np.ones((0, 20))
         candidate = np.array([item for sublist in all_peaks for item in sublist])
 
         for k in range(len(mapIdx)):
             if k not in special_k:
                 partAs = connection_all[k][:, 0]
                 partBs = connection_all[k][:, 1]
-                indexA, indexB = np.array(limbSeq[k])
+                indexA, indexB = np.array(limbSeq[k]) - 1
 
                 for i in range(len(connection_all[k])):  # = 1:size(temp,1)
                     found = 0
@@ -206,8 +189,8 @@ class torch_openpose(object):
                             subset[j1][-2] += candidate[partBs[i].astype(int), 2] + connection_all[k][i][2]
 
                     # if find no partA in the subset, create a new subset
-                    elif not found:
-                        row = -1 * np.ones(self.njoint + 1)
+                    elif not found and k < 17:
+                        row = -1 * np.ones(20)
                         row[indexA] = partAs[i]
                         row[indexB] = partBs[i]
                         row[-1] = 2
@@ -219,18 +202,17 @@ class torch_openpose(object):
             if subset[i][-1] < 4 or subset[i][-2] / subset[i][-1] < 0.4:
                 deleteIdx.append(i)
         subset = np.delete(subset, deleteIdx, axis=0)
-        
-        poses = []
-        for per in subset:
-            pose = []
-            for po in per[:-2]:
-                if po >= 0:
-                    joint = list(candidate[int(po)][:3])
-                else:
-                    joint = [0.,0.,0.]
-                pose.append(joint)
-            poses.append(pose)
 
-        return poses
+        # subset: n*20 array, 0-17 is the index in candidate, 18 is the total score, 19 is the total parts
+        # candidate: x, y, score, id
+        return candidate, subset
 
+if __name__ == "__main__":
+    body_estimation = Body('../model/body_pose_model.pth')
 
+    test_image = '../images/ski.jpg'
+    oriImg = cv2.imread(test_image)  # B,G,R order
+    candidate, subset = body_estimation(oriImg)
+    canvas = util.draw_bodypose(oriImg, candidate, subset)
+    plt.imshow(canvas[:, :, [2, 1, 0]])
+    plt.show()

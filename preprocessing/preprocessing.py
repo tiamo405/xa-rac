@@ -8,7 +8,7 @@ root = os.getcwd()
 pwd = os.path.dirname(os.path.realpath("src"))
 sys.path.insert(0, root)
 from cropvideo import crop_image_video
-from src import torch_openpose
+from src_pose import torch_openpose
 from sort.sort import Sort 
 class Preprocessing :
     def __init__(self, dir_data = 'data', parse = 'train',\
@@ -19,6 +19,8 @@ class Preprocessing :
         self.model_open_pose= model_open_pose
         self.tracking = tracking
     def tien_xu_li(self):
+        if not os.path.exists(os.path.join(self.dir_data, self.parse, 'images')) :
+            os.mkdir(os.path.join(self.dir_data, self.parse, 'images'))
         name_videos = os.listdir(os.path.join(self.dir_data, self.parse, 'videos'))
         for name_video in name_videos :
             if name_video.split('.')[-1] in os.listdir(os.path.join(self.dir_data, self.parse, 'images')) :

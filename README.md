@@ -28,11 +28,12 @@ hoặc
 ```
 https://drive.google.com/drive/folders/1Y4pj2DYfYnUyDYbquIXkcPBPHd0uXmfI?usp=sharing
 ```
-checkpoints ---LSTM
-            ---body_25.pth
-            ---body_pose_model.pth
-            ---hand_pose_model
-            ---yolov5n.pt
+checkpoints |---LSTM
+            |---body_25.pth
+            |---body_pose_model.pth
+            |---hand_pose_model
+            |---yolov5n.pt
+
 ## 4. cài đăt thư viện 
 ```
 conda create --name name_env python=3.9

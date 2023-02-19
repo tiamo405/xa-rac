@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from torch.optim import lr_scheduler
 import torch.optim as optim
 import cv2
-from datasets import DatasetLSTM
+from preprocessing.datasets import DatasetLSTM
 from model import LSTM
 import time
 import copy

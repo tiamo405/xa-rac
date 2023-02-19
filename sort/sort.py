@@ -16,10 +16,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 from __future__ import print_function
-
+import numpy as np
 from numba import jit
 import os.path
-import numpy as np
+
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from skimage import io
