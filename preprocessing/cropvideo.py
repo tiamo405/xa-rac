@@ -21,10 +21,10 @@ def createjson(poses, path_json, width, height):
         if i % 3 == 0 :
             arr.append(tmp[i] / width)
         elif i%3 ==1:
-            arr.append(tmp[i]/height)
+            arr.append(tmp[i]/ height)
     data_dict={
         # "pose_keypoints_2d":list(np.array(poses[0]).reshape(75)),
-        "pose_keypoints_2d":arr,
+        "pose_keypoints_2d":arr, # 25 toa do (x,y)
         'width' : width,
         'height': height
     }

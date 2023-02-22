@@ -25,6 +25,14 @@ def check_dict():
         else :
             label[1].append(arr)
     print(label)
+def numpyarray() :
+    a = []
+    for i in range(50) :
+        a.append(i)
+    a = np.array(a)
+    a = np.append(a, 100)
+    print(a[-30:])
 if __name__ =="__main__":
     # check_model_trash()
-    check_dict()
+    # check_dict()
+    numpyarray()

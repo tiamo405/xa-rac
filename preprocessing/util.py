@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import cv2
+import json
 def point_object(res, label = [0]) :
     person_locations = []
     for i in range(len(res.xyxy[0])):
@@ -42,5 +43,10 @@ def draw(image, pose, left = 0, top= 0) :
                      (int(xpt2)+ left, int(ypt2)+ top), color= (255,0,0), thickness= 1)
     return image
 
-        
+def read_json(path):
+    with open(path, 'r') as f :
+        pose = json.load(f)
+        pose_data = pose['pose_keypoints_2d']
+        pose_data = np.array(pose_data)
+    return pose_data
     

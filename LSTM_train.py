@@ -23,14 +23,13 @@ def get_opt():
     parser.add_argument('--replicate', type=int, default=30)
     parser.add_argument('--shuffle', action='store_true')
     
-    #
+    #path dir
     parser.add_argument('--dataset_dir', type=str, default='dataset')
     parser.add_argument('--train_dir', type=str, default='data/train')
     parser.add_argument('--save_dir', type=str, default='results/')
     
     #checkpoints, train
-    parser.add_argument('--name_model', type= str, default= 'resnet50')
-    parser.add_argument('--checkpoint_dir', type=str, default='XaRac/checkpoints/')
+    parser.add_argument('--checkpoint_dir', type=str, default='checkpoints/')
     parser.add_argument("--gpu", type=str, default='1', help="choose gpu device.")
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--lr", type=int, default=0.005)
@@ -83,7 +82,7 @@ def train(opt):
             epoch_acc = running_corrects.double() / dataset_sizes[phase]
             print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
-            if phase == 'val' and epoch_acc > best_acc:
+            if phase == 'val' and epoch_acc >= best_acc:
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
                 best_epoch = epoch
