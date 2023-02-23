@@ -14,12 +14,40 @@ sys.path.insert(0, root)
 from preprocessing.util import point_object
 from sort.sort import Sort
 from preprocessing.util import draw
+from model import LSTM
+from src import write_txt, convert_input
 
-mot_tracker = Sort(max_age=10)
-yolo_person = torch.hub.load('yolov5', 'custom', path='checkpoints/yolov5n.pt', source='local')  # or yolov5n - yolov5x6, custom
-yolo_trash = torch.hub.load('yolov5', 'custom', path='checkpoints/trash.pt', source='local')  # or yolov5n - yolov5x6, custom
-model_pose = torch_openpose.torch_openpose('body_25')
+class Model():
+    def __init__(self, opt = None):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        self.model = LSTM(input_size= opt.replicate * 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= self.device)
+        self.checkpoint_model = os.path.join(opt.checkpoint_path, opt.name_model, opt.num_train, opt.num_ckp+'.pth')
+        self.model.load_state_dict(torch.load(self.checkpoint_model)['model_state_dict'])
+        self.model = self.model.to(self.device)
+        self.model.eval()
+
+        self.replicate = opt.replicate
+
+
+    def preprocess(self, points):
+        if len(points) < self.replicate :
+            for i in range(self.replicate - len(points)) :
+                points.append(points[-1])
+            points = np.array(points)
+        else : 
+            points = np.array(points)[-30:]
+        points = points.reshape(self.replicate * 50)
+        points  = np.array(points).reshape(1, len(points))
+        return torch.tensor(points).to(self.device).unsqueeze(0).float()
+    def predict(self, points):
+        if len(points) ==0 :
+            return 0
+        points = self.preprocess(points)
+        input = torch.tensor(points)
+        label = self.model(input)
+        return label
+        
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--option', type=str, choices=['camrtsp', 'webcam', 'video'])
@@ -28,10 +56,16 @@ def parse_opt():
     
     parser.add_argument('--tile', type=float, default= 1.2)
     parser.add_argument('--dTrash', type= float, default= 10)
+    parser.add_argument('--checkpoint_path', type= str, default= 'checkpoints/')
+    parser.add_argument('--replicate', type= int, default= 30)
+    parser.add_argument('--name_model', type = str, default = 'LSTM')
+    parser.add_argument('--num_train', type= str, default= '0')
+    parser.add_argument('--num_ckp', type= str, default= 'best_epoch')
     opt = parser.parse_args()
     return opt
-def main(opt, mot_tracker = mot_tracker, yolo_person = yolo_person, \
-         yolo_trash = yolo_trash, model_pose = model_pose) :
+def main(opt, mot_tracker , yolo_person , \
+         yolo_trash , model_pose ) :
+    model = Model(opt= opt)
     if opt.option == 'camrtsp' :
         cap = cv2.VideoCapture(opt.camrtsp)
     elif opt.option == 'webcam' :
@@ -56,12 +90,16 @@ def main(opt, mot_tracker = mot_tracker, yolo_person = yolo_person, \
             for (left, top, right, bottom), id in zip(person_locations, ids):
                 label_id[id] = 'binh thuong'
                 image = frame [top: bottom, left :right]
+                pose = []
                 try :
                     pose = model_pose(image)
                     if len(pose) != 0 :
                         points = np.array(pose[0])[:, 0:2]
+                        
+                        points = convert_input(points, frame_width, frame_height)
                         frame = draw(frame, pose, left, top)
                         # print(points)
+                        
                         if id not in pose_id:
                             pose_id[id] = [points]
                         else:
@@ -71,6 +109,10 @@ def main(opt, mot_tracker = mot_tracker, yolo_person = yolo_person, \
                 except :
                     print('error')
                     continue
+                print(model.preprocess(pose_id[id]).shape)
+                label = model.predict(pose_id[id])
+                print(label)
+                # label_id[id] = label
                 cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
                 font = cv2.FONT_HERSHEY_DUPLEX
                 cv2.putText(frame, f'{id}_{label_id[id]}', (left + 6, top - 6), font, 1.0, (255, 255, 255), 1)
@@ -86,6 +128,11 @@ def main(opt, mot_tracker = mot_tracker, yolo_person = yolo_person, \
 
 if __name__ == "__main__" : 
     opt = parse_opt()
-    
+
+    mot_tracker = Sort(max_age=10)
+    yolo_person = torch.hub.load('yolov5', 'custom', path='checkpoints/yolov5n.pt', source='local')  # or yolov5n - yolov5x6, custom
+    yolo_trash = torch.hub.load('yolov5', 'custom', path='checkpoints/trash.pt', source='local')  # or yolov5n - yolov5x6, custom
+    model_pose = torch_openpose.torch_openpose('body_25')
+
     main(opt, mot_tracker = mot_tracker, yolo_person = yolo_person, \
          yolo_trash = yolo_trash, model_pose = model_pose)

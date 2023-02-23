@@ -1,20 +1,20 @@
 import argparse
 import os
 import numpy as np
-from tqdm import tqdm
 import torch
-from torch import nn
-from torch.utils.data import DataLoader
-
-# import torchvision
-# from torchvision import datasets, models, transforms
-from torch.optim import lr_scheduler
 import torch.optim as optim
 import cv2
-from preprocessing.datasets import DatasetLSTM
-from model import LSTM
 import time
 import copy
+import datetime
+
+from tqdm import tqdm
+from torch import nn
+from torch.utils.data import DataLoader
+from src import write_txt
+from torch.optim import lr_scheduler
+from preprocessing.datasets import DatasetLSTM
+from model import LSTM
 def get_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', type=str, default='nam')
@@ -29,11 +29,12 @@ def get_opt():
     parser.add_argument('--save_dir', type=str, default='results/')
     
     #checkpoints, train
+    parser.add_argument('--name_model', type= str, default= 'LSTM')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints/')
     parser.add_argument("--gpu", type=str, default='1', help="choose gpu device.")
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--lr", type=int, default=0.005)
-
+    parser.add_argument('--num_save_ckp', type= int, default= 5)
     opt = parser.parse_args()
     return opt
 # -------------------------------------------------
@@ -59,7 +60,7 @@ def train(opt):
             running_corrects = 0
             for inputs in tqdm(dataLoader[phase]):
                 input = inputs['input'].float().to(device)
-                # print(input.shape)
+                print(input.shape)
                 labels = inputs['label'].to(device)
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(phase == 'train'):
@@ -86,12 +87,16 @@ def train(opt):
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
                 best_epoch = epoch
-        torch.save({
+        if epoch % opt.num_save_ckp == 0 or epoch == opt.epochs :
+            path_save_ckp = os.path.join(opt.checkpoint_dir, opt.name_model, \
+                          str(len(os.listdir(os.path.join(opt.checkpoint_dir, opt.name_model))) -1),\
+                            str(epoch)+'.pth')
+            torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss,
-        }, os.path.join(opt.checkpoint_dir, "LSTM", (str(epoch)+".pth")))
+            },path_save_ckp)
         print()
     print(f'Best val Acc: {best_acc:4f}, epoch: {best_epoch}')
 
@@ -105,9 +110,7 @@ def train(opt):
 if __name__ == '__main__':
     opt = get_opt()
     # crop_train(opt = opt)
-    
-    if not os.path.exists(os.path.join(opt.checkpoint_dir, "LSTM")):
-        os.mkdir(os.path.join(opt.checkpoint_dir, "LSTM"))
+    print(opt)
 
     #----------------------dataloader---------------------
     Dataset = DatasetLSTM(opt)
@@ -124,12 +127,24 @@ if __name__ == '__main__':
         'train' : trainLoader,
         'val': valLoader
     }
-    print(trainDataset.__getitem__(0)['input'].shape)
 
+    if not os.path.exists(os.path.join(opt.checkpoint_dir, opt.name_model)) :
+        os.mkdir(os.path.join(opt.checkpoint_dir, opt.name_model))
+
+    os.mkdir(os.path.join(opt.checkpoint_dir, opt.name_model, \
+                          str(len(os.listdir(os.path.join(opt.checkpoint_dir, opt.name_model))))))
+
+    write_txt(opt, os.path.join(opt.checkpoint_dir, opt.name_model,\
+            str(len(os.listdir(os.path.join(opt.checkpoint_dir, opt.name_model))) -1), 'opt.txt'))
+    start_time = time.time()
     model, best_epoch = train(opt)
     torch.save({
         'epoch': best_epoch,
         'model_state_dict': model.state_dict(),
-    }, os.path.join(opt.checkpoint_dir, "LSTM", ("best_epoch"+".pth")))
+    }, os.path.join(opt.checkpoint_dir, opt.name_model, \
+                          str(len(os.listdir(os.path.join(opt.checkpoint_dir, opt.name_model))) -1),\
+                            'best_epoch.pth'))
 
-    print("done")
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+    print('Training time {}'.format(total_time_str))

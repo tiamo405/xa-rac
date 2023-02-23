@@ -44,7 +44,7 @@ class DatasetLSTM(data.Dataset):
                 input = np.array(input)
             else : 
                 input = np.array(input)[-30:]
-            input = np.array(input).reshape(1500)
+            input = np.array(input).reshape(self.replicate * 50)
             labels.append(label)
             inputs.append(input)
 
