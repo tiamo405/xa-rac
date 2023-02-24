@@ -41,7 +41,8 @@ def get_opt():
 def train(opt):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("device :", device)
-    model = LSTM(input_size= opt.replicate * 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= device)
+    # model = LSTM(input_size= opt.replicate * 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= device)
+    model = LSTM(input_size= 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= device)
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=opt.lr, momentum=0.9, weight_decay=5e-4)
@@ -60,7 +61,7 @@ def train(opt):
             running_corrects = 0
             for inputs in tqdm(dataLoader[phase]):
                 input = inputs['input'].float().to(device)
-                print(input.shape)
+                # print(input)
                 labels = inputs['label'].to(device)
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(phase == 'train'):

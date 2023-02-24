@@ -36,7 +36,7 @@ class LSTM(nn.Module):
 
 class TRANSFORMER(nn.Module):
     def __init__(self, d_model, n_head, num_classes, device):
-        super(LSTM, self).__init__()
+        super(TRANSFORMER, self).__init__()
         self.d_model = d_model
         self.n_head = n_head
         self.device = device
@@ -68,18 +68,17 @@ class TRANSFORMER(nn.Module):
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
-    modelLSTM = LSTM(input_size= 30 * 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= device)
+    modelLSTM = LSTM(input_size= 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= device)
     modelLSTM = modelLSTM.to(device)
     # modelTrans = TRANSFORMER(d_model= 1500, n_head= 128, num_classes= 2, device= device).to(device)
-    test1 = torch.rand((1,1,1500)).to(device)
+    test1 = torch.rand((10, 30, 50)).to(device)
 
-    print(test1)
     modelLSTM.eval() #non-gradient
 
     print(modelLSTM(test1))
 
-    transformer_model = nn.Transformer(nhead=16, num_encoder_layers=12)
-    src = torch.rand((10, 32, 512))
-    tgt = torch.rand((20, 32, 512))
-    out = transformer_model(src, tgt)
+    transformer_model = TRANSFORMER(d_model= 50, n_head= 128, num_classes= 2, device= device).to(device)
+    src = torch.rand((10, 30, 50))
+    transformer_model.eval()
+    out = transformer_model(src)
     print(out)

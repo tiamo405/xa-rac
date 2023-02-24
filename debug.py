@@ -32,7 +32,12 @@ def numpyarray() :
     a = np.array(a)
     a = np.append(a, 100)
     print(a[-30:])
+def convertint2str():
+    a = 2
+    print(str(a).zfill(4))
+    print(str(1).zfill(2))
 if __name__ =="__main__":
     # check_model_trash()
     # check_dict()
-    numpyarray()
+    # numpyarray()
+    convertint2str()

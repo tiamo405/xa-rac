@@ -50,3 +50,21 @@ def read_json(path):
         pose_data = np.array(pose_data)
     return pose_data
     
+def createjson(poses, path_json, width, height):
+    tmp = list(np.array(poses[0]).reshape(75))
+    arr = []
+    for i in range(len(tmp)) :
+        if i % 3 == 0 :
+            arr.append(tmp[i] / width)
+        elif i%3 ==1:
+            arr.append(tmp[i]/ height)
+    data_dict={
+        # "pose_keypoints_2d":list(np.array(poses[0]).reshape(75)),
+        "pose_keypoints_2d":arr, # 25 toa do (x,y)
+        'width' : width,
+        'height': height
+    }
+    data_string = json.dumps(data_dict)
+    myjsonfile = open(path_json, "w")
+    myjsonfile.write(data_string)
+    myjsonfile.close()

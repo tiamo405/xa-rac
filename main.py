@@ -21,7 +21,7 @@ class Model():
     def __init__(self, opt = None):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.model = LSTM(input_size= opt.replicate * 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= self.device)
+        self.model = LSTM(input_size= 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= self.device)
         self.checkpoint_model = os.path.join(opt.checkpoint_path, opt.name_model, opt.num_train, opt.num_ckp+'.pth')
         self.model.load_state_dict(torch.load(self.checkpoint_model)['model_state_dict'])
         self.model = self.model.to(self.device)
@@ -37,8 +37,7 @@ class Model():
             points = np.array(points)
         else : 
             points = np.array(points)[-30:]
-        points = points.reshape(self.replicate * 50)
-        points  = np.array(points).reshape(1, len(points))
+        points = np.reshape(points, (points.shape[0], points.shape[1]))
         return torch.tensor(points).to(self.device).unsqueeze(0).float()
     def predict(self, points):
         if len(points) ==0 :
@@ -46,6 +45,7 @@ class Model():
         points = self.preprocess(points)
         input = torch.tensor(points)
         label = self.model(input)
+        label = np.argmax(label.cpu().detach().numpy())
         return label
         
 def parse_opt():
@@ -63,8 +63,8 @@ def parse_opt():
     parser.add_argument('--num_ckp', type= str, default= 'best_epoch')
     opt = parser.parse_args()
     return opt
-def main(opt, mot_tracker , yolo_person , \
-         yolo_trash , model_pose ) :
+def main(opt, mot_tracker=None , yolo_person=None , \
+         yolo_trash=None , model_pose= None ) :
     model = Model(opt= opt)
     if opt.option == 'camrtsp' :
         cap = cv2.VideoCapture(opt.camrtsp)
@@ -105,14 +105,14 @@ def main(opt, mot_tracker , yolo_person , \
                         else:
                             pose_id[id].append(points)
                         # print(pose_id[id])
-                         
+
                 except :
                     print('error')
                     continue
                 print(model.preprocess(pose_id[id]).shape)
                 label = model.predict(pose_id[id])
                 print(label)
-                # label_id[id] = label
+                label_id[id] = 'Xa rac' if label == 1 else 'binh thuong'
                 cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
                 font = cv2.FONT_HERSHEY_DUPLEX
                 cv2.putText(frame, f'{id}_{label_id[id]}', (left + 6, top - 6), font, 1.0, (255, 255, 255), 1)
@@ -122,8 +122,6 @@ def main(opt, mot_tracker , yolo_person , \
         if cv2.waitKey(25) & 0xFF == ord('q'):
             break
     cap.release()
-    print(label_id)
-    print(pose_id)
     print("done")
 
 if __name__ == "__main__" : 

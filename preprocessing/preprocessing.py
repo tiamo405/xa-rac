@@ -17,32 +17,36 @@ class Preprocessing :
         self.parse = parse
         self.model_detect_person=model_detect_person
         self.model_open_pose= model_open_pose
-        self.tracking = tracking
+        # self.tracking = tracking
     def tien_xu_li(self):
+        tracking = Sort(max_age=10)
         if not os.path.exists(os.path.join(self.dir_data, self.parse, 'images')) :
             os.mkdir(os.path.join(self.dir_data, self.parse, 'images'))
         name_videos = os.listdir(os.path.join(self.dir_data, self.parse, 'videos'))
+        name_videos.sort(key= lambda x: int(x.split('.')[0]))
         for name_video in name_videos :
             if name_video.split('.')[-1] in os.listdir(os.path.join(self.dir_data, self.parse, 'images')) :
                 continue
             print('path video: ',os.path.join(self.dir_data, self.parse, 'videos', name_video))
-
+            # tracking = Sort(max_age= 10)
             crop_image_video(path_video         = os.path.join(self.dir_data, self.parse, 'videos', name_video),\
                             path_save           = os.path.join(self.dir_data, self.parse, 'images'), \
                             model_detect_person = self.model_detect_person,\
                             model_open_pose     = self.model_open_pose,\
-                            tracking            = self.tracking)
+                            tracking            = tracking)
     def create_csv(self) :
-        name_video = []
+        name_videos = []
         ids = []
         labels = []
-        for fname in os.listdir(os.path.join(self.dir_data, self.parse, 'images')):
-            for id in os.listdir(os.path.join(self.dir_data, self.parse, 'images', fname)) :
-                name_video.append(fname)
+        fnames = os.listdir(os.path.join(self.dir_data, self.parse, 'images'))
+        fnames.sort(key= lambda x:int(x))
+        for name_video in fnames:
+            for id in os.listdir(os.path.join(self.dir_data, self.parse, 'images', name_video, 'img')) :
+                name_videos.append(name_video)
                 ids.append(id)
                 labels.append(0)
         df = pd.DataFrame({
-            'name_video': name_video,
+            'name_video': name_videos,
             'id' : ids,
             'label': labels
         })
@@ -52,7 +56,7 @@ if __name__ == "__main__":
     model_open_pose = torch_openpose.torch_openpose('body_25')
     tracking = Sort(max_age=10)
     prepro = Preprocessing(model_detect_person=model_detect_person, model_open_pose= model_open_pose, tracking= tracking)
-    # prepro.tien_xu_li()
+    prepro.tien_xu_li()
     prepro.create_csv()
     
         
