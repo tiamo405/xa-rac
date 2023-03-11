@@ -6,7 +6,9 @@ import sys
 from preprocessing.util import point_object, draw
 import torch
 from src_pose import torch_openpose
-
+import time
+import datetime
+import os
 def check_model_trash() :
     model = torch.hub.load('yolov5', 'custom', path='checkpoints/trash.pt', source='local')
     im = cv2.imread("data/lonbia.jpg")
@@ -36,8 +38,25 @@ def convertint2str():
     a = 2
     print(str(a).zfill(4))
     print(str(1).zfill(2))
+
+def checkmodelpose() :
+    model_open_pose = torch_openpose.torch_openpose('body_25')
+    image = cv2.imread("data/train/images/0000/img/0001/0001.jpg")
+    start_time = time.time()
+    pose = model_open_pose(image)
+    print(pose)
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+    print(total_time)
+
+def checksort() :
+    fnames = os.listdir("data/train/images")
+    fnames = sorted(fnames)
+    print(fnames)
 if __name__ =="__main__":
     # check_model_trash()
     # check_dict()
     # numpyarray()
-    convertint2str()
+    # convertint2str()
+    # checkmodelpose()
+    checksort()

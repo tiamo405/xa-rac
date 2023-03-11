@@ -15,20 +15,19 @@ from preprocessing.util import point_object
 from sort.sort import Sort
 from preprocessing.util import draw
 from model import LSTM
-from src import write_txt, convert_input
+from src import write_txt, convert_input, str2bool
 
 class Model():
     def __init__(self, opt = None):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model = LSTM(input_size= 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= self.device)
-        self.checkpoint_model = os.path.join(opt.checkpoint_path, opt.name_model, opt.num_train, opt.num_ckp+'.pth')
+        self.checkpoint_model = os.path.join(opt.checkpoint_path, opt.name_model, opt.num_train, opt.num_ckpt+'.pth')
         self.model.load_state_dict(torch.load(self.checkpoint_model)['model_state_dict'])
         self.model = self.model.to(self.device)
         self.model.eval()
 
         self.replicate = opt.replicate
-
 
     def preprocess(self, points):
         if len(points) < self.replicate :
@@ -50,17 +49,19 @@ class Model():
         
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--option', type=str, choices=['camrtsp', 'webcam', 'video'])
+    parser.add_argument('--option', type=str, choices=['camrtsp', 'webcam', 'video'], default= 'video')
     parser.add_argument('--camrtsp', type= str, default='none')
     parser.add_argument('--path_video', type= str, default='none')
-    
+
     parser.add_argument('--tile', type=float, default= 1.2)
     parser.add_argument('--dTrash', type= float, default= 10)
     parser.add_argument('--checkpoint_path', type= str, default= 'checkpoints/')
-    parser.add_argument('--replicate', type= int, default= 30)
+    parser.add_argument('--replicate', type= int, default= 100)
     parser.add_argument('--name_model', type = str, default = 'LSTM')
     parser.add_argument('--num_train', type= str, default= '0')
-    parser.add_argument('--num_ckp', type= str, default= 'best_epoch')
+    parser.add_argument('--num_ckpt', type= str, default= 'best_epoch')
+    parser.add_argument('--save_video', type= str2bool, default= True)
+    parser.add_argument('--path_save_video', type= str, default='results/video')
     opt = parser.parse_args()
     return opt
 def main(opt, mot_tracker=None , yolo_person=None , \
@@ -76,6 +77,10 @@ def main(opt, mot_tracker=None , yolo_person=None , \
     pose_id = {}
     frame_width = int(cap.get(3))
     frame_height = int(cap.get(4))
+    path_save_video = os.path.join(opt.path_save_video, str(len(os.listdir(opt.path_save_video))).zfill(4)+ '.avi')
+    video = cv2.VideoWriter(path_save_video, 
+                         cv2.VideoWriter_fourcc(*'MJPG'),
+                         10, (frame_width, frame_height))
     while(cap.isOpened()):
         ret, frame = cap.read()
         if frame is None:
@@ -110,15 +115,19 @@ def main(opt, mot_tracker=None , yolo_person=None , \
                     print('error')
                     continue
                 print(model.preprocess(pose_id[id]).shape)
-                label = model.predict(pose_id[id])
-                print(label)
-                label_id[id] = 'Xa rac' if label == 1 else 'binh thuong'
-                cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
+                if len(pose_id[id]) >= opt.replicate :
+                    label = model.predict(pose_id[id])
+                    print(label)
+                    label_id[id] = 'Xa rac' if label == 1 else 'binh thuong'
+                cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 255), 2)
                 font = cv2.FONT_HERSHEY_DUPLEX
-                cv2.putText(frame, f'{id}_{label_id[id]}', (left + 6, top - 6), font, 1.0, (255, 255, 255), 1)
+                cv2.putText(frame, f'{id}_{label_id[id]}', (left + 6, top + 6), font, 1, (0, 0, 255), 1)
             
         # cv2.imshow("Image", frame)
+        if opt.save_video == True :
+            video.write(frame)
         cv2.imwrite('frame.jpg', frame)
+        # break
         if cv2.waitKey(25) & 0xFF == ord('q'):
             break
     cap.release()

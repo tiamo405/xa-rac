@@ -13,14 +13,14 @@ from torch import nn
 from torch.utils.data import DataLoader
 from src import write_txt
 from torch.optim import lr_scheduler
-from preprocessing.datasets import DatasetLSTM
+from datasets import DatasetLSTM
 from model import LSTM
 def get_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', type=str, default='nam')
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('-j', '--workers', type=int, default=2)
-    parser.add_argument('--replicate', type=int, default=30)
+    parser.add_argument('--replicate', type=int, default=100)
     parser.add_argument('--shuffle', action='store_true')
     
     #path dir
@@ -38,13 +38,14 @@ def get_opt():
     opt = parser.parse_args()
     return opt
 # -------------------------------------------------
-def train(opt):
+def train(opt, num_folder):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("device :", device)
     # model = LSTM(input_size= opt.replicate * 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= device)
     model = LSTM(input_size= 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= device)
     model = model.to(device)
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
+    criterion = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=opt.lr, momentum=0.9, weight_decay=5e-4)
     best_acc = 0.0
     best_epoch = 0
@@ -60,9 +61,9 @@ def train(opt):
             running_loss = 0.0
             running_corrects = 0
             for inputs in tqdm(dataLoader[phase]):
-                input = inputs['input'].float().to(device)
+                input = inputs['input_json'].float().to(device)
                 # print(input)
-                labels = inputs['label'].to(device)
+                labels = inputs['label'].to(device).float()
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(input)
@@ -90,7 +91,7 @@ def train(opt):
                 best_epoch = epoch
         if epoch % opt.num_save_ckp == 0 or epoch == opt.epochs :
             path_save_ckp = os.path.join(opt.checkpoint_dir, opt.name_model, \
-                          str(len(os.listdir(os.path.join(opt.checkpoint_dir, opt.name_model))) -1),\
+                          num_folder,\
                             str(epoch)+'.pth')
             torch.save({
             'epoch': epoch,
@@ -111,7 +112,7 @@ def train(opt):
 if __name__ == '__main__':
     opt = get_opt()
     # crop_train(opt = opt)
-    print(opt)
+    print('\n'.join(map(str,(str(opt).split('(')[1].split(',')))))
 
     #----------------------dataloader---------------------
     Dataset = DatasetLSTM(opt)
@@ -132,18 +133,22 @@ if __name__ == '__main__':
     if not os.path.exists(os.path.join(opt.checkpoint_dir, opt.name_model)) :
         os.mkdir(os.path.join(opt.checkpoint_dir, opt.name_model))
 
-    os.mkdir(os.path.join(opt.checkpoint_dir, opt.name_model, \
-                          str(len(os.listdir(os.path.join(opt.checkpoint_dir, opt.name_model))))))
-
-    write_txt(opt, os.path.join(opt.checkpoint_dir, opt.name_model,\
-            str(len(os.listdir(os.path.join(opt.checkpoint_dir, opt.name_model))) -1), 'opt.txt'))
+    num_folder = str(len(os.listdir(os.path.join(opt.checkpoint_dir, opt.name_model)))).zfill(3)
+    os.mkdir(os.path.join(opt.checkpoint_dir, opt.name_model, num_folder))
+    
+    
+    opt_save = '\n'.join(map(str,(str(opt).split('(')[1].split(','))))
+    
+    write_txt(opt_save, os.path.join(opt.checkpoint_dir, opt.name_model,\
+            num_folder, 'opt.txt'))
+    
     start_time = time.time()
-    model, best_epoch = train(opt)
+    model, best_epoch = train(opt, num_folder)
     torch.save({
         'epoch': best_epoch,
         'model_state_dict': model.state_dict(),
     }, os.path.join(opt.checkpoint_dir, opt.name_model, \
-                          str(len(os.listdir(os.path.join(opt.checkpoint_dir, opt.name_model))) -1),\
+                          num_folder,\
                             'best_epoch.pth'))
 
     total_time = time.time() - start_time

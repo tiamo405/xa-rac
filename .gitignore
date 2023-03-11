@@ -2,6 +2,7 @@ data/
 checkpoints/
 yolov5/
 __pycache__/
+results/
 .pt
 .pth
 
@@ -11,4 +12,5 @@ __pycache__/
 .avi
 .csv
 .zip
+
 

@@ -62,7 +62,7 @@ class TRANSFORMER(nn.Module):
         # Decode the hidden state of the last time step
 
         out = out[:, -1, :]
-         
+        
         out = self.fc(out)
         return out
 if __name__ == "__main__":
@@ -71,14 +71,14 @@ if __name__ == "__main__":
     modelLSTM = LSTM(input_size= 50, hidden_size= 128, num_layers= 4, num_classes= 2, device= device)
     modelLSTM = modelLSTM.to(device)
     # modelTrans = TRANSFORMER(d_model= 1500, n_head= 128, num_classes= 2, device= device).to(device)
-    test1 = torch.rand((10, 30, 50)).to(device)
+    test1 = torch.rand((10, 100, 50)).to(device) # batch size 10, 50 dau vao
 
     modelLSTM.eval() #non-gradient
 
     print(modelLSTM(test1))
 
-    transformer_model = TRANSFORMER(d_model= 50, n_head= 128, num_classes= 2, device= device).to(device)
-    src = torch.rand((10, 30, 50))
-    transformer_model.eval()
-    out = transformer_model(src)
-    print(out)
+    # transformer_model = TRANSFORMER(d_model= 50, n_head= 128, num_classes= 2, device= device).to(device)
+    # src = torch.rand((10, 30, 50))
+    # transformer_model.eval()
+    # out = transformer_model(src)
+    # print(out)
