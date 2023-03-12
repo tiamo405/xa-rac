@@ -9,6 +9,7 @@ import torch
 import sys
 import argparse
 root = os.getcwd()
+import random
 pwd = os.path.dirname(os.path.realpath("sort"))
 sys.path.insert(0, root)
 from preprocessing.util import point_object
@@ -51,12 +52,12 @@ def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--option', type=str, choices=['camrtsp', 'webcam', 'video'], default= 'video')
     parser.add_argument('--camrtsp', type= str, default='none')
-    parser.add_argument('--path_video', type= str, default='none')
+    parser.add_argument('--path_video', type= str, default='data/test/split_video000.mp4')
 
     parser.add_argument('--tile', type=float, default= 1.2)
     parser.add_argument('--dTrash', type= float, default= 10)
     parser.add_argument('--checkpoint_path', type= str, default= 'checkpoints/')
-    parser.add_argument('--replicate', type= int, default= 100)
+    parser.add_argument('--replicate', type= int, default= 300)
     parser.add_argument('--name_model', type = str, default = 'LSTM')
     parser.add_argument('--num_train', type= str, default= '0')
     parser.add_argument('--num_ckpt', type= str, default= 'best_epoch')
@@ -64,6 +65,21 @@ def parse_opt():
     parser.add_argument('--path_save_video', type= str, default='results/video')
     opt = parser.parse_args()
     return opt
+
+def plot_one_box(x, img, color=None, label=None, line_thickness=3):
+    # Plots one bounding box on image img
+    tl = line_thickness or round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1  # line/font thickness
+    color = color or [random.randint(0, 255) for _ in range(3)]
+    c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
+    cv2.rectangle(img, c1, c2, color, thickness=tl, lineType=cv2.LINE_AA)
+    if label:
+        tf = max(tl - 1, 1)  # font thickness
+        t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
+        c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+        cv2.rectangle(img, c1, c2, color, -1, cv2.LINE_AA)  # filled
+        cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+
+
 def main(opt, mot_tracker=None , yolo_person=None , \
          yolo_trash=None , model_pose= None ) :
     model = Model(opt= opt)
@@ -77,10 +93,12 @@ def main(opt, mot_tracker=None , yolo_person=None , \
     pose_id = {}
     frame_width = int(cap.get(3))
     frame_height = int(cap.get(4))
+    fps = cap.get(cv2.CAP_PROP_FPS)
     path_save_video = os.path.join(opt.path_save_video, str(len(os.listdir(opt.path_save_video))).zfill(4)+ '.avi')
     video = cv2.VideoWriter(path_save_video, 
                          cv2.VideoWriter_fourcc(*'MJPG'),
-                         10, (frame_width, frame_height))
+                         fps, (frame_width, frame_height))
+    # vid_path, vid_writer = [None] * 1, [None] * 1
     while(cap.isOpened()):
         ret, frame = cap.read()
         if frame is None:
@@ -94,6 +112,7 @@ def main(opt, mot_tracker=None , yolo_person=None , \
             ids = trackers[:, 4].flatten()
             for (left, top, right, bottom), id in zip(person_locations, ids):
                 label_id[id] = 'binh thuong'
+                print((left, top, right, bottom))
                 image = frame [top: bottom, left :right]
                 pose = []
                 try :
@@ -114,18 +133,49 @@ def main(opt, mot_tracker=None , yolo_person=None , \
                 except :
                     print('error')
                     continue
-                print(model.preprocess(pose_id[id]).shape)
-                if len(pose_id[id]) >= opt.replicate :
-                    label = model.predict(pose_id[id])
-                    print(label)
-                    label_id[id] = 'Xa rac' if label == 1 else 'binh thuong'
-                cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 255), 2)
-                font = cv2.FONT_HERSHEY_DUPLEX
-                cv2.putText(frame, f'{id}_{label_id[id]}', (left + 6, top + 6), font, 1, (0, 0, 255), 1)
-            
+                # print(model.preprocess(pose_id[id]).shape)
+
+                if (id == 1):
+                    opt.replicate = 100
+                elif (id == 2):
+                    opt.replicate = 110
+                else:
+                    opt.replicate = 60
+                # print(f"id: {id} --- {len(pose_id[id])}")
+                # if len(pose_id[id]) >= opt.replicate :
+                #     # label = model.predict(pose_id[id])
+                #     label = 1
+                #     print(label)
+                #     label_id[id] = 'Xa rac' if label == 1 else 'binh thuong'
+                #     # cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 3)
+                #     # font = cv2.FONT_HERSHEY_DUPLEX
+                #     # cv2.putText(frame, f'{id}_{label_id[id]}', (left + 6, top + 6), font, 1, (0, 0, 255), 1)
+                #     # plot_one_box([left, top, right, bottom], frame, (0, 0, 255), f'{id}_{label_id[id]}', 3)
+                # else:
+                #     label_id[id] = 'binh thuong'
+                    # plot_one_box([left, top, right, bottom], frame, (0, 237, 255), f'{id}_{label_id[id]}', 3)
+                    # cv2.rectangle(frame, (left, top), (right, bottom), (0, 237, 255), 3)
+                    # font = cv2.FONT_HERSHEY_DUPLEX
+                    # cv2.putText(frame, f'{id}_{label_id[id]}', (left + 6, top + 6), font, 1, (0, 0, 255), 1)
+
         # cv2.imshow("Image", frame)
         if opt.save_video == True :
             video.write(frame)
+            # fps, w, h = 30, frame.shape[1], frame.shape[0]
+            # save_path = path_save_video
+            # i = 0
+            # if vid_path[i] != save_path:  # new video
+            #     vid_path[i] = save_path
+            #     if isinstance(vid_writer[i], cv2.VideoWriter):
+            #         vid_writer[i].release()  # release previous video writer
+            #     # if vid_cap:  # video
+            #     vid_cap = cap
+            #     fps = vid_cap.get(cv2.CAP_PROP_FPS)
+            #     w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            #     h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            #     vid_writer[i] = cv2.VideoWriter(save_path.split('.')[0], cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+            # vid_writer[i].write(frame)
+
         cv2.imwrite('frame.jpg', frame)
         # break
         if cv2.waitKey(25) & 0xFF == ord('q'):
