@@ -2,7 +2,7 @@ import cv2
 import torch
 import os
 import numpy as np
-
+import argparse
 def write_txt(noidung, path, remove = False):
     if os.path.exists(path) and remove == True:
         os.remove(path)

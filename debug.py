@@ -53,10 +53,11 @@ def checksort() :
     fnames = os.listdir("data/train/images")
     fnames = sorted(fnames)
     print(fnames)
+
 if __name__ =="__main__":
     # check_model_trash()
     # check_dict()
     # numpyarray()
     # convertint2str()
-    # checkmodelpose()
-    checksort()
+    checkmodelpose()
+
